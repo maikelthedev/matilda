@@ -78,6 +78,8 @@ describe('Stage 2: Process the responses', () => {
 
 describe('Stage 3: Respond', () => {
   it('Should read the pending respond conversations from a DB or file')
+  it('Should match a canned response depending of a pattern that the message includes')
+  it('Should respond, then archive the conversation')
   it('Should mark as hasResponded to the conversation')
   it('Should mark as newResponse if the recruiter has responsed again')
   it('Should repeat the process with all the possible canned responses, never manual')
