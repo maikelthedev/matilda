@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs')
 require('dotenv').config()
-const {USERNAME, PASS} = process.env
+const {USERNAME, PASS, ME} = process.env
 
 export class LinkedinMessages {
   constructor() {
@@ -121,9 +121,40 @@ export class LinkedinMessages {
     this.convos = JSON.parse(fs.readFileSync('convos.json'))
   }
 
+  findWho() {
+    const change = []
+    for (const convo of this.convos) {
+      const name = convo.result.split('profile')[1].split('\n')[1]
+      // Because I'm not interested in conversations that I started
+      if (name !== 'Maikel Frias') {
+        let messages = convo.result.split('\n')
+        const isRecruiter = messages.includes('Recruiter')
+        messages = messages.filter(message => !message.includes('Recruiter'))
+
+        change.push({
+          name: name,
+          recruiter: isRecruiter,
+          url: convo.url,
+          messages: messages
+        })
+      }
+    }
+    this.convos = change
+    return this
+  }
+
   reformat() {
     // TODO: Make it in a format that is actually usable or saveble in Mongo/GraphQL
-    const example = this.convos[0]
-    console.log(example)
+    const filtered = []
+    for (const convo of this.convos) {
+      let messages = convo.messages
+      messages = messages.filter(message => message !== '')
+      messages = messages.filter(message => !message.includes('View '))
+      messages = messages.filter(message => !message.includes('sent the following '))
+      messages = messages.filter(message => message !== ME)
+      messages = messages.filter(message => message !== convo.name)
+      convo.messages = messages
+    }
+    return this
   }
 }

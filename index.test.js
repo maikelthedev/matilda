@@ -61,8 +61,31 @@ describe('Stage 2: Process the responses', () => {
     instance.loadConvos()
     expect(instance.convos.length > 0)
   })
+
+  it('Should find out who sent the message', () => {
+    instance.findWho()
+    for (let convo of instance.convos) {
+      // This is a shitty test
+      expect(convo.name !== 'Maikel Frias')
+    }
+  })
   it('Reformat responses', () => {
     instance.reformat()
-    //console.log(instance)
+    // TODO: Write a test for this.
   })
+  it('Should save only the reformatted responses that do not exist already')
+})
+
+describe('Stage 3: Respond', () => {
+  it('Should read the pending respond conversations from a DB or file')
+  it('Should mark as hasResponded to the conversation')
+  it('Should mark as newResponse if the recruiter has responsed again')
+  it('Should repeat the process with all the possible canned responses, never manual')
+  it('Should serve a control panel for canned responses')
+})
+
+describe('Stage 4: Repeat', () => {
+  it('Should repeat the entire process according to a schedule')
+  it('Should allow to change that schedule')
+  it('Should keep logs of the conversations as leads')
 })
