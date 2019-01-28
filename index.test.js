@@ -54,7 +54,7 @@ describe.skip('Stage 1: Read some data and save it locally', () => {
   })
 })
 
-describe('Stage 2: Process the responses', () => {
+describe.skip('Stage 2: Process and save conversations', () => {
   let instance
   it('loadConvos()',  () => {
     instance = new LinkedinMessages()
@@ -73,12 +73,46 @@ describe('Stage 2: Process the responses', () => {
     instance.reformat()
     // TODO: Write a test for this.
   })
-  it('Should save only the reformatted responses that do not exist already')
+  describe('Should save only the reformatted responses that do not exist already', () => {
+    // What does exist already mean?
+    // Do not use a database until you have a clear idea of the data model.
+    it('Should read the previous conversations', () => {
+      instance.readConvos()
+      expect(instance.prevConvos.length >1)
+    })
+    it('Should mark those that are new or the author has responded', () => {
+      instance.markNew()
+      const testNewLength = instance.convos.filter(convo => convo.new).length
+      const testResponded = instance.convos.filter(convo => convo.responded)
+      const testRespondedLength = testResponded.length
+      expect(testResponded[0].name).equal('Jack Sims')
+      expect(testNewLength).equal(4)
+      expect(testRespondedLength).equal(1)
+    })
+    it('Should save the modified file', () => {
+      // TODO: You'll need to add crap to this file, real convos are no good
+      instance.saveConvos('./fixtures/refEnd.json')
+      // Test this.
+    })
+  })
+
 })
 
 describe('Stage 3: Respond', () => {
-  it('Should read the pending respond conversations from a DB or file')
-  it('Should match a canned response depending of a pattern that the message includes')
+  let instance
+  it('Should read the pending respond conversations from a DB or file', () => {
+    instance = new LinkedinMessages()
+    instance.readConvos('./fixtures/refEnd.json')
+    const testNewLength = instance.convos.filter(convo => convo.new).length
+    const testResponded = instance.convos.filter(convo => convo.responded)
+    const testRespondedLength = testResponded.length
+    expect(testResponded[0].name).equal('Jack Sims')
+    expect(testNewLength).equal(4)
+    expect(testRespondedLength).equal(1)
+  })
+  it('Should match a canned response depending of a pattern that the message includes', () => {
+    // This is where the fun starts. 
+  })
   it('Should respond, then archive the conversation')
   it('Should mark as hasResponded to the conversation')
   it('Should mark as newResponse if the recruiter has responsed again')

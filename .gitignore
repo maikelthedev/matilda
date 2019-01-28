@@ -1,3 +1,5 @@
 .env
 convos.json
 node_modules
+reformatted.json
+fixtures

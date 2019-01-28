@@ -157,4 +157,40 @@ export class LinkedinMessages {
     }
     return this
   }
+
+  readConvos(name = 'reformatted.json') {
+    if (this.convos) {
+      // In one case is to process, in the other they are already processed
+      this.prevConvos = JSON.parse(fs.readFileSync(name))
+    } else {
+      this.convos = JSON.parse(fs.readFileSync(name))
+      // Get only the new or processed ones. 
+      this.convos = this.convos.filter(convo =>
+         convo.new || convo.responded
+      )
+
+    }
+  }
+
+   saveConvos(name = "reformatted.json") {
+    fs.writeFileSync(name, JSON.stringify(this.convos))
+  }
+
+  markNew() {
+    // We are defining as  new, conversations that have a new author
+    // or conversations  that have higher message length, for now.
+    // Later we can fix this as archived conversations.
+    for (let convo of this.convos) {
+      const one = this.prevConvos.find(aConvo => aConvo.name === convo.name)
+      if (!one) {
+        convo['new'] = true
+        continue
+      }
+      if (one && one.messages.length > convo.messages.length) {
+        convo['responded'] = true
+        continue
+      }
+    }
+    return this
+  }
 }
