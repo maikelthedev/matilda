@@ -1,0 +1,18 @@
+[
+  {
+    "name": "initial",
+    "responses": [
+      "Hi, thank you for taking your time contacting me",
+      "Would you mind letting me know whether this is for an existing role or for 'possible', prospective or future roles?",
+      "Thank you",
+      "",
+      "Maikel through his LinkedIn bot assistant @Matilda, available in https://github.com/maikeldotuk/matilda"
+    ] 
+  },
+  { 
+    "name": "followup",
+    "responses":[
+      "Hello X"
+    ]
+  }
+]

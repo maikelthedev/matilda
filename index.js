@@ -3,14 +3,18 @@ const fs = require('fs')
 require('dotenv').config()
 const { USERNAME, PASS, ME } = process.env
 
-export class LinkedinMessages {
+export class Matilda {
   async getBrowser () {
-    const puppet = await puppeteer.launch({
+    this.browser = await puppeteer.launch({
       executablePath: '/usr/bin/chromium',
       slowMo: 10,
-      headless: false
+      headless: false,
+      defaultViewPort: {
+        width: 1024,
+        height: 768
+      }
     })
-    this.page = await puppet.newPage()
+    this.page = await this.browser.newPage()
     return this
   }
 
@@ -44,7 +48,7 @@ export class LinkedinMessages {
   }
 
   async scrollToGetAll () {
-    const times = 4
+    const times = 4 // Seems reasonable
     let i = 0
     while (i < times) {
       await this.page.evaluate(sel => {
@@ -97,8 +101,8 @@ export class LinkedinMessages {
     return this
   }
 
-  async deleteOldFile () {
-    fs.unlink('convos.json', err => {
+  async deleteOldFile (file = 'raw_convos.json') {
+    await fs.unlink(file, err => {
       if (err && err.code !== 'ENOENT') {
         throw err
       }
@@ -106,79 +110,79 @@ export class LinkedinMessages {
     return this
   }
 
-  async saveToFile () {
-    await fs.writeFile('convos.json', JSON.stringify(this.convos), function (
-      err
-    ) {
-      if (err) throw err
-    })
-    delete this.page
-    delete this.convos
-    delete this.convoURLs
-    delete this.messagesListSelector
-    delete this.selectorsConvo
-    return this
+  saveToFile (file = 'raw_convos.json') {
+    fs.writeFileSync(file, JSON.stringify(this.convos))
   }
 
-  loadConvos (file = 'convos.json') {
+  loadConvos (file = 'raw_convos.json') {
     this.convos = JSON.parse(fs.readFileSync(file))
   }
 
+  async closeBrowser () {
+    await this.browser.close()
+  }
+
   findWho () {
-    const change = []
     for (const convo of this.convos) {
-      const name = convo.result.split('profile')[1].split('\n')[1]
-      // Because I'm not interested in conversations that I started
-      if (name !== 'Maikel Frias') {
-        let messages = convo.result.split('\n')
-        const isRecruiter = messages.includes('Recruiter')
-        messages = messages.filter(message => !message.includes('Recruiter'))
-
-        change.push({
-          name: name,
-          recruiter: isRecruiter,
-          url: convo.url,
-          messages: messages
-        })
-      }
+      convo['name'] = convo.result.split('profile')[1].split('\n')[1]
+      convo['messages'] = convo.result.split('\n')
+      delete convo['result']
     }
-    this.convos = change
     return this
   }
 
-  reformat () {
-    // TODO: Make it in a format that is actually usable or saveble in Mongo/GraphQL
+  discardIStarted () {
+    this.convos = this.convos.filter(convo => convo.name !== ME)
+  }
+
+  clean () {
     for (const convo of this.convos) {
-      let messages = convo.messages
-      messages = messages.filter(message => message !== '')
-      messages = messages.filter(message => !message.includes('View '))
-      messages = messages.filter(
-        message => !message.includes('sent the following ')
+      convo.messages = convo.messages.filter(message =>
+        !message.includes('View ') &&
+        !message.includes('sent the following ') &&
+        message !== ME &&
+        message !== convo.name &&
+        message !== ''
       )
-      messages = messages.filter(message => message !== ME)
-      messages = messages.filter(message => message !== convo.name)
-      convo.messages = messages
     }
     return this
   }
 
-  recruiters () {
-    for (const person of this.convos) {
-      if (person.recruiter === true) {
-        person['response'] = [
-          `Dear ${person.name}, thank you for taking your time contacting me.`,
-          'Unfortunately I am only accepting messages direct from employers, not recruiters.',
-          'Have a nice day.',
-          '',
-          'Sent with LinkedInBot created by Maikel,',
-          'available in https://github.com/maikeldotuk/linkedinBot'
-        ]
+  saveReformatted () {
+    this.saveToFile('reformatted_convos.json')
+  }
+
+  loadReformatted () {
+    this.loadConvos('reformatted_convos.json')
+  }
+
+  loadCanned () {
+    this.canned = JSON.parse(fs.readFileSync('canned.json'))
+  }
+
+  findCannedResponse () {
+    for (const convo of this.convos) {
+      convo['sent'] = []
+      for (const canned of this.canned) {
+        const firstMessage = canned.responses[0]
+        if (convo.messages.includes(firstMessage)) {
+          convo.sent.push(canned.name)
+        }
       }
     }
+    return this
   }
+  prepareResponse () {
+    for (let convo of this.convos) {
+      const canned = this.canned.find(resp => !convo.sent.includes(resp.name))
+      convo.response = canned.responses
+    }
+    return this
+  }
+
   async respond () {
     for (const convo of this.convos) {
-      if (convo.response && convo.responded === false) {
+      if (convo.response && convo.response.length > 0) {
         await this.page.goto(convo.url)
         await this.page.click('.msg-form__contenteditable')
         for (const line of convo.response) {
@@ -186,10 +190,11 @@ export class LinkedinMessages {
           await this.page.keyboard.press('Enter')
         }
         await this.page.click('.msg-form__send-button')
-        convo['responded'] = true
+        await this.page.waitFor(1000)
       }
     }
   }
+
   async archiveAll () {
     await this.accessMessages()
     await this.page.waitFor(2000)
@@ -205,4 +210,4 @@ export class LinkedinMessages {
       await this.page.click(all[a] + ' > div.msg-conversation-card__content > div:nth-child(1) > div > button.msg-conversation-card__list-action.msg-conversation-card__list-action--right.msg-conversation-card__archive')
     }
   }
-
+}

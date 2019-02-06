@@ -1,5 +1,7 @@
 .env
 convos.json
+raw_convos.json
 node_modules
-reformatted.json
+reformatted_convos.json
 fixtures
+
