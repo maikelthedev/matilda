@@ -1,64 +1,64 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer')
 const fs = require('fs')
 require('dotenv').config()
-const {USERNAME, PASS, ME} = process.env
+const { USERNAME, PASS, ME } = process.env
 
 export class LinkedinMessages {
-  constructor() {
-
-  }
-
-  async getBrowser() {
+  async getBrowser () {
     const puppet = await puppeteer.launch({
-  		executablePath: '/usr/bin/chromium',
-  		//slowMo: 10,
-  		//headless: false
-  	})
+      executablePath: '/usr/bin/chromium',
+      slowMo: 10,
+      headless: false
+    })
     this.page = await puppet.newPage()
     return this
   }
 
-  async logIn() {
-    await this.page.goto('https://www.linkedin.com/uas/login?fromSignIn=true&trk=uno-reg-join-sign-in');
+  async logIn () {
+    await this.page.goto(
+      'https://www.linkedin.com/uas/login?fromSignIn=true&trk=uno-reg-join-sign-in'
+    )
     await this.page.click('#username')
     await this.page.keyboard.type(USERNAME)
     await this.page.click('#password')
     await this.page.keyboard.type(PASS)
-    await this.page.click('#app__container > main > div > form > div.login__form_action_container > button')
+    await this.page.click(
+      '#app__container > main > div > form > div.login__form_action_container > button'
+    )
     await this.page.waitForNavigation()
     return this
   }
 
-  async accessMessages() {
+  async accessMessages () {
     await this.page.click('#messaging-tab-icon')
     await this.page.waitForNavigation()
     return this
   }
 
-  async getListOfMessagesSelector() {
+  async getListOfMessagesSelector () {
     this.messagesListSelector = await this.page.evaluate(() => {
-      const result = document.querySelectorAll('ul');
+      const result = document.querySelectorAll('ul')
       return '#' + result[4].attributes.id.nodeValue
-    });
+    })
     return this
   }
 
-  async scrollToGetAll() {
+  async scrollToGetAll () {
     const times = 4
     let i = 0
-    while (i<times) {
-      await this.page.evaluate((sel) => {
+    while (i < times) {
+      await this.page.evaluate(sel => {
         const result = document.querySelector(sel)
-        result.scrollBy(0,100000)
+        result.scrollBy(0, 100000)
       }, this.messagesListSelector)
-      i = i+1
+      i = i + 1
       await this.page.waitFor(1000)
     }
     return this
   }
 
-  async getSelectorsConvo() {
-    this.selectorsConvo = await this.page.evaluate((sel) => {
+  async getSelectorsConvo () {
+    this.selectorsConvo = await this.page.evaluate(sel => {
       let result = []
       document.querySelector(sel).childNodes.forEach(each => {
         if (each.attributes && each.attributes.id) {
@@ -70,12 +70,13 @@ export class LinkedinMessages {
     return this
   }
 
-  async getConvoURLs() {
-    this.convoURLs = await this.page.evaluate((sel) => {
+  async getConvoURLs () {
+    this.convoURLs = await this.page.evaluate(sel => {
       const results = []
       for (let select of sel) {
         if (document.querySelector('#' + select + ' > a')) {
-          result =  document.querySelector('#' + select + ' > a').attributes.href.nodeValue
+          const result = document.querySelector('#' + select + ' > a')
+            .attributes.href.nodeValue
           results.push('https://www.linkedin.com' + result)
         }
       }
@@ -83,21 +84,21 @@ export class LinkedinMessages {
     }, this.selectorsConvo)
   }
 
-  async getConvosText() {
+  async getConvosText () {
     this.convos = []
     for (const url of this.convoURLs) {
       await this.page.goto(url)
-      await this.page.waitForSelector(".msg-s-message-list-content")
+      await this.page.waitForSelector('.msg-s-message-list-content')
       let result = await this.page.evaluate(() => {
-        return document.querySelector(".msg-s-message-list-content").innerText
+        return document.querySelector('.msg-s-message-list-content').innerText
       })
-      this.convos.push({url: url, result: result})
+      this.convos.push({ url: url, result: result })
     }
     return this
   }
 
-  async deleteOldFile() {
-    fs.unlink('convos.json', (err) => {
+  async deleteOldFile () {
+    fs.unlink('convos.json', err => {
       if (err && err.code !== 'ENOENT') {
         throw err
       }
@@ -105,9 +106,11 @@ export class LinkedinMessages {
     return this
   }
 
-  async saveToFile() {
-    await fs.writeFile("convos.json", JSON.stringify(this.convos), function (err) {
-      if (err) throw err;
+  async saveToFile () {
+    await fs.writeFile('convos.json', JSON.stringify(this.convos), function (
+      err
+    ) {
+      if (err) throw err
     })
     delete this.page
     delete this.convos
@@ -117,11 +120,11 @@ export class LinkedinMessages {
     return this
   }
 
-  loadConvos() {
-    this.convos = JSON.parse(fs.readFileSync('convos.json'))
+  loadConvos (file = 'convos.json') {
+    this.convos = JSON.parse(fs.readFileSync(file))
   }
 
-  findWho() {
+  findWho () {
     const change = []
     for (const convo of this.convos) {
       const name = convo.result.split('profile')[1].split('\n')[1]
@@ -143,14 +146,15 @@ export class LinkedinMessages {
     return this
   }
 
-  reformat() {
+  reformat () {
     // TODO: Make it in a format that is actually usable or saveble in Mongo/GraphQL
-    const filtered = []
     for (const convo of this.convos) {
       let messages = convo.messages
       messages = messages.filter(message => message !== '')
       messages = messages.filter(message => !message.includes('View '))
-      messages = messages.filter(message => !message.includes('sent the following '))
+      messages = messages.filter(
+        message => !message.includes('sent the following ')
+      )
       messages = messages.filter(message => message !== ME)
       messages = messages.filter(message => message !== convo.name)
       convo.messages = messages
@@ -158,39 +162,47 @@ export class LinkedinMessages {
     return this
   }
 
-  readConvos(name = 'reformatted.json') {
-    if (this.convos) {
-      // In one case is to process, in the other they are already processed
-      this.prevConvos = JSON.parse(fs.readFileSync(name))
-    } else {
-      this.convos = JSON.parse(fs.readFileSync(name))
-      // Get only the new or processed ones. 
-      this.convos = this.convos.filter(convo =>
-         convo.new || convo.responded
-      )
-
+  recruiters () {
+    for (const person of this.convos) {
+      if (person.recruiter === true) {
+        person['response'] = [
+          `Dear ${person.name}, thank you for taking your time contacting me.`,
+          'Unfortunately I am only accepting messages direct from employers, not recruiters.',
+          'Have a nice day.',
+          '',
+          'Sent with LinkedInBot created by Maikel,',
+          'available in https://github.com/maikeldotuk/linkedinBot'
+        ]
+      }
     }
   }
-
-   saveConvos(name = "reformatted.json") {
-    fs.writeFileSync(name, JSON.stringify(this.convos))
-  }
-
-  markNew() {
-    // We are defining as  new, conversations that have a new author
-    // or conversations  that have higher message length, for now.
-    // Later we can fix this as archived conversations.
-    for (let convo of this.convos) {
-      const one = this.prevConvos.find(aConvo => aConvo.name === convo.name)
-      if (!one) {
-        convo['new'] = true
-        continue
-      }
-      if (one && one.messages.length > convo.messages.length) {
+  async respond () {
+    for (const convo of this.convos) {
+      if (convo.response && convo.responded === false) {
+        await this.page.goto(convo.url)
+        await this.page.click('.msg-form__contenteditable')
+        for (const line of convo.response) {
+          await this.page.keyboard.type(line)
+          await this.page.keyboard.press('Enter')
+        }
+        await this.page.click('.msg-form__send-button')
         convo['responded'] = true
-        continue
       }
     }
-    return this
   }
-}
+  async archiveAll () {
+    await this.accessMessages()
+    await this.page.waitFor(2000)
+    let all = await this.page.evaluate(() => {
+      const giveBak = []
+      const results = document.querySelectorAll('div.msg-conversation-card__content > div:nth-child(1) > div > button.msg-conversation-card__list-action.msg-conversation-card__list-action--right.msg-conversation-card__archive')
+      for (const result of results) {
+        giveBak.push('#' + result.offsetParent.id)
+      }
+      return giveBak
+    })
+    for (let a = 0; a < all.length; a++) {
+      await this.page.click(all[a] + ' > div.msg-conversation-card__content > div:nth-child(1) > div > button.msg-conversation-card__list-action.msg-conversation-card__list-action--right.msg-conversation-card__archive')
+    }
+  }
+
